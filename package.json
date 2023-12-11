@@ -5,5 +5,14 @@
   "main": "index.js",
   "repository": "https://github.com/yugoka/OpenAI-FunctionTree",
   "author": "Yugo Oka",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.20.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.3",
+    "typescript": "^5.3.2",
+    "ts-node": "^10.9.1",
+    "dotenv": "^16.3.1"
+  }
 }
