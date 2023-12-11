@@ -1,0 +1,9 @@
+{
+  "name": "openai-functiontree",
+  "version": "1.0.0",
+  "description": "Easily categorizing OpenAI tools & function calling to save token consumption.",
+  "main": "index.js",
+  "repository": "https://github.com/yugoka/OpenAI-FunctionTree",
+  "author": "Yugo Oka",
+  "license": "MIT"
+}
