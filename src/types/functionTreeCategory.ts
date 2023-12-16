@@ -12,6 +12,6 @@ export type FunctionTreeCategory = {
 // openai toolsを付加したもの(toolsは自動生成)
 export type FunctionTreeCategoryWithTool = {
   type: "category";
-  tools: ChatCompletionTool[];
+  tool: ChatCompletionTool;
   children: FunctionTreeNodeWithTool[];
 };
