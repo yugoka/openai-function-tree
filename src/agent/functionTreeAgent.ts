@@ -12,6 +12,7 @@ import {
 import {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
+  ChatCompletionToolMessageParam,
 } from "openai/resources";
 import { convertFunctionTreeCategory } from "../utils/convertFunctionTreeCategory";
 
@@ -21,6 +22,11 @@ type AgentOptions = {
   options?: {
     verbose?: boolean;
   };
+};
+
+type AgentRunResult = {
+  message: string;
+  toolCallResults: ChatCompletionToolMessageParam[];
 };
 
 export class FunctionTreeAgent {
@@ -40,7 +46,7 @@ export class FunctionTreeAgent {
     this.verbose = options?.verbose || false;
   }
 
-  async run(messages: ChatCompletionMessageParam[]): Promise<string> {
+  async run(messages: ChatCompletionMessageParam[]): Promise<AgentRunResult> {
     const result = await this.runAgent(this.functionTreeRoot, messages);
     return result;
   }
@@ -49,7 +55,7 @@ export class FunctionTreeAgent {
   private async runAgent(
     currentCategory: FunctionTreeCategoryWithTool,
     messages: ChatCompletionMessageParam[]
-  ): Promise<string> {
+  ): Promise<AgentRunResult> {
     try {
       const messagesWithPrompt = this.getMessagesForAgent(
         currentCategory,
@@ -89,24 +95,25 @@ export class FunctionTreeAgent {
       if (!toolCalls) {
         // toolCallsがない場合は返信+instructionをそのまま返す
         const result = responseMessage.content || toolNotFoundDefaultPrompt;
-        return `{ "action": "${instruction}", "feedback": "${result}" }`;
+        return {
+          message: `{ "action": "${instruction}", "feedback": "${result}" }`,
+          toolCallResults: [],
+        };
       } else {
         // ツールを実行する
-        const toolCallResults: string[] = await this.callTools(
-          toolCalls,
-          currentCategory
-        );
+        const toolCallResults: ChatCompletionToolMessageParam[] =
+          await this.callTools(toolCalls, currentCategory);
 
         // メッセージを加工
-        const resultMessage = this.getToolCallResultMessage(
+        const joinedResultMessage = this.getToolCallResultMessage(
           toolCalls,
-          toolCallResults
+          toolCallResults.map((result) => result.content || "")
         );
 
-        return resultMessage;
+        return { message: joinedResultMessage, toolCallResults };
       }
     } catch (error) {
-      return `${error}`;
+      return { message: `${error}`, toolCallResults: [] };
     }
   }
 
@@ -116,37 +123,50 @@ export class FunctionTreeAgent {
     currentCategory: FunctionTreeCategoryWithTool
   ) {
     // 並列実行できるようにPromiseの配列にする
-    const toolCallPromises: Promise<string>[] = toolCalls.map(
-      async (toolCall) => {
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments);
+    const toolCallPromises: Promise<ChatCompletionToolMessageParam>[] =
+      toolCalls.map(
+        async (toolCall): Promise<ChatCompletionToolMessageParam> => {
+          const toolName = toolCall.function.name;
+          const toolArgs = JSON.parse(toolCall.function.arguments);
 
-        const functionTreeNode = currentCategory.children.find(
-          (node) => node.tool.function.name === toolName
-        );
+          const functionTreeNode = currentCategory.children.find(
+            (node) => node.tool.function.name === toolName
+          );
 
-        if (functionTreeNode?.type === "category") {
-          // FunctionTreeの2階層目からは最初に与えられたプロンプトをオミットする(instructionだけを次nodeに渡す)
-          const instructionMessage: ChatCompletionMessageParam = {
-            role: "user",
-            content: toolArgs._instruction,
-          };
+          if (functionTreeNode?.type === "category") {
+            // FunctionTreeの2階層目からは最初に与えられたプロンプトをオミットする(instructionだけを次nodeに渡す)
+            const instructionMessage: ChatCompletionMessageParam = {
+              role: "user",
+              content: toolArgs._instruction,
+            };
 
-          // 再帰実行
-          const result =
-            (await this.runAgent(
-              functionTreeNode,
-              this.getMessagesForAgent(currentCategory, [instructionMessage])
-            )) || "";
-          return result;
-        } else if (functionTreeNode?.type === "tool") {
-          const result = (await functionTreeNode?.function(toolArgs)) || "";
-          return result;
-        } else {
-          return "";
+            // 再帰実行
+            const result =
+              (await this.runAgent(
+                functionTreeNode,
+                this.getMessagesForAgent(currentCategory, [instructionMessage])
+              )) || "";
+            return {
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: result.message,
+            };
+          } else if (functionTreeNode?.type === "tool") {
+            const result = (await functionTreeNode?.function(toolArgs)) || "";
+            return {
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: result,
+            };
+          } else {
+            return {
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: "",
+            };
+          }
         }
-      }
-    );
+      );
 
     const toolCallResults = await Promise.all(toolCallPromises);
     return toolCallResults;
@@ -158,6 +178,7 @@ export class FunctionTreeAgent {
     messages: ChatCompletionMessageParam[]
   ): ChatCompletionMessageParam[] {
     const prompt = currentCategory.prompt || functionTreeAgentDefaultPrompt;
+
     return [
       {
         role: "system",

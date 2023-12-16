@@ -11,4 +11,5 @@ Always use tools to fulfill user requests.
 - If the information for the API is insufficient, reply briefly with only the missing information, like "Temperature information is needed".
 `.trim();
 
-export const toolNotFoundDefaultPrompt = "Tool Not Foundaaa";
+export const toolNotFoundDefaultPrompt =
+  "Error: Tool not found, and there was no reply from the agent.";
