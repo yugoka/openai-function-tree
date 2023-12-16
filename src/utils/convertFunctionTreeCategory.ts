@@ -1,3 +1,4 @@
+import { funtionTreeInstructionDescription } from "../prompts/default/defaultPrompts";
 import {
   FunctionTreeCategory,
   FunctionTreeCategoryWithTool,
@@ -33,10 +34,9 @@ export const convertFunctionTreeCategory = (
         parameters: {
           type: "object",
           properties: {
-            purpose: {
+            instruction: {
               type: "string",
-              description:
-                "One specific action you want to perform, such as 'search about milk production in USA', 'measure room temperature', or 'turn on the TV on the second floor'. Please provide clear and complete instructions.",
+              description: funtionTreeInstructionDescription(),
             },
           },
         },
@@ -45,6 +45,7 @@ export const convertFunctionTreeCategory = (
     children: functionTreeCategory.children.map((child) =>
       addToolsToFunctionTreeNode(child)
     ),
+    prompt: functionTreeCategory.prompt,
   };
   return result;
 };
