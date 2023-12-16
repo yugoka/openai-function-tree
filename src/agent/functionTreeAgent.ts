@@ -31,6 +31,10 @@ export type FunctionTreeAgentOptions = {
   verbose?: boolean;
 };
 
+type AgentRunOptions = {
+  noTools?: boolean;
+};
+
 type AgentRunResult = {
   resultText: string;
   newMessage: ChatCompletionMessageParam;
@@ -55,15 +59,19 @@ export class FunctionTreeAgent {
     this.verbose = options?.verbose || false;
   }
 
-  async run(messages: ChatCompletionMessageParam[]): Promise<AgentRunResult> {
-    const result = await this.next(this.functionTreeRoot, messages);
+  async run(
+    messages: ChatCompletionMessageParam[],
+    options?: AgentRunOptions
+  ): Promise<AgentRunResult> {
+    const result = await this.next(this.functionTreeRoot, messages, options);
     return result;
   }
 
   // エージェントを再帰的に実行する
   private async next(
     currentCategory: FunctionTreeCategoryWithTool,
-    messages: ChatCompletionMessageParam[]
+    messages: ChatCompletionMessageParam[],
+    options?: AgentRunOptions
   ): Promise<AgentRunResult> {
     try {
       const messagesWithPrompt = this.getMessagesForAgent(
@@ -73,6 +81,9 @@ export class FunctionTreeAgent {
       const modelName =
         currentCategory.modelName || FUNCTION_TREE_AGENT_DEFAULT_MODEL_NAME;
 
+      // ツールを使わないオプション
+      const { noTools = false } = options || {};
+
       // このカテゴリでやりたいこと
       const instruction = messages[messages.length - 1].content;
 
@@ -80,7 +91,7 @@ export class FunctionTreeAgent {
       const currentChoices = currentCategory.children.filter(
         (node) => node.type === "tool" || node.children.length
       );
-      const tools = currentChoices.map((choice) => choice.tool);
+      const tools = noTools ? [] : currentChoices.map((choice) => choice.tool);
 
       // ChatGPTにリクエストを投げる
       const response = await this.openai.chat.completions.create({

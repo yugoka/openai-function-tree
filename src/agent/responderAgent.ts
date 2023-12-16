@@ -15,23 +15,27 @@ type AgentOptions = {
   apiKey?: string;
   functionTree: FunctionTreeCategory;
   functionTreeAgentOptions?: FunctionTreeAgentOptions;
-  responderAgentOptions?: ResponderAgentOptions;
+  options?: ResponderAgentOptions;
 };
 type ResponderAgentOptions = {
-  maxSteps: number;
+  maxSteps?: number;
+  enableFallbackMessage?: boolean;
 };
 
 export class ResponderAgent {
   private functionTreeAgent: FunctionTreeAgent;
-  private options: ResponderAgentOptions;
+  private maxSteps: number;
+  private enableFallbackMessage: boolean;
 
   constructor({
     apiKey,
     functionTree,
-    responderAgentOptions,
     functionTreeAgentOptions,
+    options = {},
   }: AgentOptions) {
-    this.options = { maxSteps: responderAgentOptions?.maxSteps || 5 };
+    const { maxSteps = 5, enableFallbackMessage = true } = options;
+    this.maxSteps = maxSteps;
+    this.enableFallbackMessage = enableFallbackMessage;
 
     if (!apiKey) {
       throw new Error("OPENAI API key not found");
@@ -64,15 +68,35 @@ export class ResponderAgent {
 
     console.log("content: ", newMessage.content);
 
-    // 結果にツール呼び出しがあるならもう1段階生成する
-    if (toolCallResults.length && step < this.options.maxSteps) {
+    if (toolCallResults.length && step < this.maxSteps) {
+      // 結果にツール呼び出しがあるならもう1段階生成する
       const result = await this.next(
         [...prevMessages, newMessage, ...toolCallResults],
         step + 1
       );
       return result;
+    } else if (
+      this.enableFallbackMessage &&
+      toolCallResults.length &&
+      step === this.maxSteps
+    ) {
+      // enableFallbackMessageがtrueかつ、stepsを使い切ったにも関わらずtoolCallを要求している場合
+      // フォールバックメッセージを生成する
+      const result = await this.generateFallbackMessage(prevMessages);
+      return [...prevMessages, result];
     } else {
+      // 正常終了
       return [...prevMessages, { role: "assistant", content: resultText }];
     }
+  }
+
+  // stepsを使い切った時用に最後の返信を生成
+  private async generateFallbackMessage(
+    messages: ChatCompletionMessageParam[]
+  ) {
+    const { newMessage } = await this.functionTreeAgent.run(messages, {
+      noTools: true,
+    });
+    return newMessage;
   }
 }
