@@ -43,9 +43,9 @@ export class ResponderAgent {
 
     this.functionTreeAgent = new FunctionTreeAgent({
       apiKey,
-      // rootだけ対話専用のプロンプトに置き換える
       functionTree: {
         ...functionTree,
+        // rootだけ対話専用のプロンプトに置き換える
         prompt: functionTree.prompt || responderDefaultPrompt,
       },
       options: functionTreeAgentOptions,
