@@ -103,10 +103,10 @@ export class FunctionTreeAgent {
       }
 
       if (finishReason != "tool_calls" || !toolCalls) {
-        // toolCallsがない場合は返信+instructionをそのまま返す
+        // toolCallsがない場合はそのまま返信する
         const result = newMessage.content || toolNotFoundDefaultPrompt;
         return {
-          resultText: `{ "action": "${instruction}", "feedback": "${result}" }`,
+          resultText: result,
           toolCallResults: [],
           newMessage,
           finishReason,
