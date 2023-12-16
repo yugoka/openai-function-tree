@@ -1,6 +1,6 @@
 {
   "name": "openai-function-tree",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Easily categorizing OpenAI tools & function calling to save token consumption.",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
