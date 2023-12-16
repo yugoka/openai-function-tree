@@ -14,23 +14,30 @@ import {
   ChatCompletionMessageToolCall,
 } from "openai/resources";
 import { convertFunctionTreeCategory } from "../utils/convertFunctionTreeCategory";
-import { FunctionTreeNodeWithTool } from "../types/functionTreeNode";
 
 type AgentOptions = {
-  apiKey: string;
+  apiKey?: string;
   functionTree: FunctionTreeCategory;
-  options?: {};
+  options?: {
+    verbose?: boolean;
+  };
 };
 
 export class FunctionTreeAgent {
   private openai: OpenAI;
   private functionTreeRoot: FunctionTreeCategoryWithTool;
+  verbose: boolean;
 
-  constructor({ apiKey, functionTree, ...options }: AgentOptions) {
+  constructor({ apiKey, functionTree, options }: AgentOptions) {
+    if (!apiKey) {
+      throw new Error("OPENAI API key not found");
+    }
+
     this.openai = new OpenAI({
       apiKey,
     });
     this.functionTreeRoot = convertFunctionTreeCategory(functionTree);
+    this.verbose = options?.verbose || false;
   }
 
   async run(messages: ChatCompletionMessageParam[]): Promise<string> {
@@ -51,12 +58,16 @@ export class FunctionTreeAgent {
       const modelName =
         currentCategory.modelName || FUNCTION_TREE_AGENT_DEFAULT_MODEL_NAME;
 
+      // このカテゴリでやりたいこと
+      const instruction = messages[messages.length - 1].content;
+
       // 現在のステップの選択肢
       const currentChoices = currentCategory.children.filter(
         (node) => node.type === "tool" || node.children.length
       );
       const tools = currentChoices.map((choice) => choice.tool);
 
+      // ChatGPTにリクエストを投げる
       const response = await this.openai.chat.completions.create({
         messages: messagesWithPrompt,
         model: modelName,
@@ -66,20 +77,33 @@ export class FunctionTreeAgent {
       const responseMessage = response.choices[0].message;
       const toolCalls = responseMessage?.tool_calls;
 
-      if (toolCalls) {
+      if (this.verbose) {
+        console.log({
+          category: currentCategory.tool.function.name,
+          instruction,
+          content: responseMessage.content,
+          toolCalls: toolCalls?.map((toolCall) => toolCall.function.name),
+        });
+      }
+
+      if (!toolCalls) {
+        // toolCallsがない場合は返信+instructionをそのまま返す
+        const result = responseMessage.content || toolNotFoundDefaultPrompt;
+        return `{ "action": "${instruction}", "feedback": "${result}" }`;
+      } else {
         // ツールを実行する
         const toolCallResults: string[] = await this.callTools(
           toolCalls,
           currentCategory
         );
+
+        // メッセージを加工
         const resultMessage = this.getToolCallResultMessage(
           toolCalls,
           toolCallResults
         );
+
         return resultMessage;
-      } else {
-        // toolCallsがない場合は返信をそのまま返す
-        return responseMessage.content || toolNotFoundDefaultPrompt;
       }
     } catch (error) {
       return `${error}`;
@@ -95,31 +119,31 @@ export class FunctionTreeAgent {
     const toolCallPromises: Promise<string>[] = toolCalls.map(
       async (toolCall) => {
         const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(
-          toolCall.function.arguments
-        ) as FunctionTreeCategoryToolArgs;
+        const toolArgs = JSON.parse(toolCall.function.arguments);
 
-        const skillNode = currentCategory.children.find(
+        const functionTreeNode = currentCategory.children.find(
           (node) => node.tool.function.name === toolName
         );
 
-        if (skillNode?.type === "category") {
+        if (functionTreeNode?.type === "category") {
           // FunctionTreeの2階層目からは最初に与えられたプロンプトをオミットする(instructionだけを次nodeに渡す)
           const instructionMessage: ChatCompletionMessageParam = {
             role: "user",
-            content: toolArgs.instruction,
+            content: toolArgs._instruction,
           };
 
           // 再帰実行
           const result =
             (await this.runAgent(
-              skillNode,
+              functionTreeNode,
               this.getMessagesForAgent(currentCategory, [instructionMessage])
             )) || "";
           return result;
-        } else {
-          const result = (await skillNode?.function(toolArgs)) || "";
+        } else if (functionTreeNode?.type === "tool") {
+          const result = (await functionTreeNode?.function(toolArgs)) || "";
           return result;
+        } else {
+          return "";
         }
       }
     );
@@ -143,7 +167,7 @@ export class FunctionTreeAgent {
     ];
   }
 
-  // toolCallsの結果を雑にjoinする
+  // toolCallsの結果を雑にjsonっぽくする
   // そのうち変えたい
   getToolCallResultMessage(
     toolCalls: ChatCompletionMessageToolCall[],
@@ -154,12 +178,19 @@ export class FunctionTreeAgent {
       const toolArgs = JSON.parse(
         toolCall.function.arguments
       ) as FunctionTreeCategoryToolArgs;
-      return toolArgs.instruction;
+      return toolArgs._instruction;
     });
 
     let result = "";
     for (let i = 0; i < results.length; i++) {
-      result += `[action: ${instructions[i]}, result: ${results[i]}]\n`;
+      if (i >= 1) {
+        result += ",";
+      }
+
+      // _instructionsがあるかどうかでカテゴリ判定をしているため注意
+      result += `{ "${toolCalls[i].function.name}": [${
+        instructions[i] ? results[i] : `"${results[i]}"`
+      }] }`;
     }
     return result;
   }

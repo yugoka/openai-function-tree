@@ -34,7 +34,7 @@ export const convertFunctionTreeCategory = (
         parameters: {
           type: "object",
           properties: {
-            instruction: {
+            _instruction: {
               type: "string",
               description: funtionTreeInstructionDescription,
             },

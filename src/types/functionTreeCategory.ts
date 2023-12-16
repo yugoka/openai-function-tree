@@ -23,5 +23,6 @@ export type FunctionTreeCategoryWithTool = {
 };
 
 export type FunctionTreeCategoryToolArgs = {
-  instruction: string;
+  // reserved
+  _instruction: string;
 };
