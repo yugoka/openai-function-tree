@@ -1,3 +1,8 @@
+//
+// FunctionTreeを使って再帰的にAPIを叩いてくれるエージェント。
+// このライブラリの基幹部分です。
+//
+
 import { FUNCTION_TREE_AGENT_DEFAULT_MODEL_NAME } from "./../constants/model";
 import OpenAI from "openai";
 import {
@@ -19,14 +24,18 @@ import { convertFunctionTreeCategory } from "../utils/convertFunctionTreeCategor
 type AgentOptions = {
   apiKey?: string;
   functionTree: FunctionTreeCategory;
-  options?: {
-    verbose?: boolean;
-  };
+  options?: FunctionTreeAgentOptions;
+};
+
+export type FunctionTreeAgentOptions = {
+  verbose?: boolean;
 };
 
 type AgentRunResult = {
-  message: string;
+  resultText: string;
+  newMessage: ChatCompletionMessageParam;
   toolCallResults: ChatCompletionToolMessageParam[];
+  finishReason: string;
 };
 
 export class FunctionTreeAgent {
@@ -47,12 +56,12 @@ export class FunctionTreeAgent {
   }
 
   async run(messages: ChatCompletionMessageParam[]): Promise<AgentRunResult> {
-    const result = await this.runAgent(this.functionTreeRoot, messages);
+    const result = await this.next(this.functionTreeRoot, messages);
     return result;
   }
 
   // エージェントを再帰的に実行する
-  private async runAgent(
+  private async next(
     currentCategory: FunctionTreeCategoryWithTool,
     messages: ChatCompletionMessageParam[]
   ): Promise<AgentRunResult> {
@@ -80,24 +89,27 @@ export class FunctionTreeAgent {
         tools: tools,
         tool_choice: "auto",
       });
-      const responseMessage = response.choices[0].message;
-      const toolCalls = responseMessage?.tool_calls;
+      const newMessage = response.choices[0].message;
+      const finishReason = response.choices[0].finish_reason;
+      const toolCalls = newMessage?.tool_calls;
 
       if (this.verbose) {
         console.log({
           category: currentCategory.tool.function.name,
           instruction,
-          content: responseMessage.content,
+          content: newMessage.content,
           toolCalls: toolCalls?.map((toolCall) => toolCall.function.name),
         });
       }
 
-      if (!toolCalls) {
+      if (finishReason != "tool_calls" || !toolCalls) {
         // toolCallsがない場合は返信+instructionをそのまま返す
-        const result = responseMessage.content || toolNotFoundDefaultPrompt;
+        const result = newMessage.content || toolNotFoundDefaultPrompt;
         return {
-          message: `{ "action": "${instruction}", "feedback": "${result}" }`,
+          resultText: `{ "action": "${instruction}", "feedback": "${result}" }`,
           toolCallResults: [],
+          newMessage,
+          finishReason,
         };
       } else {
         // ツールを実行する
@@ -110,10 +122,20 @@ export class FunctionTreeAgent {
           toolCallResults.map((result) => result.content || "")
         );
 
-        return { message: joinedResultMessage, toolCallResults };
+        return {
+          resultText: joinedResultMessage,
+          newMessage,
+          toolCallResults,
+          finishReason,
+        };
       }
     } catch (error) {
-      return { message: `${error}`, toolCallResults: [] };
+      return {
+        resultText: `${error}`,
+        newMessage: { role: "assistant", content: `${error}` },
+        toolCallResults: [],
+        finishReason: "stop",
+      };
     }
   }
 
@@ -142,14 +164,14 @@ export class FunctionTreeAgent {
 
             // 再帰実行
             const result =
-              (await this.runAgent(
+              (await this.next(
                 functionTreeNode,
                 this.getMessagesForAgent(currentCategory, [instructionMessage])
               )) || "";
             return {
               role: "tool",
               tool_call_id: toolCall.id,
-              content: result.message,
+              content: result.resultText,
             };
           } else if (functionTreeNode?.type === "tool") {
             const result = (await functionTreeNode?.function(toolArgs)) || "";
