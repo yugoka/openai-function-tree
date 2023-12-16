@@ -6,4 +6,4 @@ const OpenAIFunctionTreeModule = {
   ResponderAgent: ResponderAgent,
 };
 
-export default OpenAIFunctionTreeModule;
+module.exports = OpenAIFunctionTreeModule;
