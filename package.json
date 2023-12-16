@@ -7,9 +7,6 @@
   "files": [
     "lib"
   ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/yugoka"
-  },
   "repository": "https://github.com/yugoka/OpenAI-FunctionTree",
   "author": "Yugo Oka",
   "license": "MIT",
