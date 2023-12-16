@@ -11,11 +11,11 @@ import {
 const addToolsToFunctionTreeNode = (
   node: FunctionTreeNode
 ): FunctionTreeNodeWithTool => {
-  // カテゴリ
   if (node.type === "category") {
+    // カテゴリ
     return convertFunctionTreeCategory(node);
-    // アクション
   } else {
+    // アクション
     return node;
   }
 };
@@ -36,7 +36,7 @@ export const convertFunctionTreeCategory = (
           properties: {
             instruction: {
               type: "string",
-              description: funtionTreeInstructionDescription(),
+              description: funtionTreeInstructionDescription,
             },
           },
         },
