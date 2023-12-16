@@ -1,5 +1,6 @@
 # openai-function-tree
-npm: https://www.npmjs.com/package/openai-function-tree, GitHub: https://github.com/yugoka/openai-function-tree
+npm: https://www.npmjs.com/package/openai-function-tree<br>
+GitHub: https://github.com/yugoka/openai-function-tree
 
 ## Overview
 Function Callingのトークン使用量を大幅節約！😎<br>
