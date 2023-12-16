@@ -1,8 +1,9 @@
 # openai-function-tree
-Function Callingのトークン使用量を大幅節約！😎<br>
-Significantly save on token usage by categorizing Function Calling! 😎
+npm: https://www.npmjs.com/package/openai-function-tree
 
 ## Overview
+Function Callingのトークン使用量を大幅節約！😎<br>
+Significantly save on token usage by categorizing Function Calling! 😎<br><br>
 `openai-function-tree` is a library designed for OpenAI Assistant Tools, specifically for Function Calling. It categorizes tools in a tree structure, enabling recursive searching. This approach helps save token length in tool descriptions and other related texts. Initially created for personal use, it is now available for everyone. Please note, this is a Work in Progress.
 
 ## Installation
@@ -81,7 +82,8 @@ const result = await functionTreeAgent.run([
   },
 ]);
 
-console.log(result); 
+console.log(result);
+// result example: '"control" => "control-iot-device" => "1st-floor-cooler-control" => "First floor air conditioner turned on"'
 ```
 
 Additionally, `ResponderTreeAgent` can be used as a wrapper that recursively executes `FunctionTreeAgent` until the user's command is fully accomplished. 
