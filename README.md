@@ -81,7 +81,8 @@ const result = await functionTreeAgent.run([
   },
 ]);
 
-console.log(result); 
+console.log(result);
+// result example: '"control" => "control-iot-device" => "1st-floor-cooler-control" => "First floor air conditioner turned on"'
 ```
 
 Additionally, `ResponderTreeAgent` can be used as a wrapper that recursively executes `FunctionTreeAgent` until the user's command is fully accomplished. 
