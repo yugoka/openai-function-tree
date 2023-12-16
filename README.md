@@ -82,7 +82,7 @@ const result = await functionTreeAgent.run([
 console.log(result); 
 ```
 
-Additionally, you can use ResponderTreeAgent as follows:
+Additionally, `ResponderTreeAgent` can be used as a wrapper that recursively executes `FunctionTreeAgent` until the user's command is fully accomplished. 
 ```typescript
 import { ResponderAgent } from 'openai-function-tree';
 
@@ -102,7 +102,7 @@ const agent = new ResponderAgent({
 const result = await agent.run([
   {
     role: "user",
-    content: `Check the temperature in Fujisawa City.`,
+    content: `Check the temperature in Fujisawa City and set the air conditioner to the same temperature.`,
   },
 ]);
 ```
