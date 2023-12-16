@@ -231,9 +231,9 @@ export class FunctionTreeAgent {
       }
 
       // _instructionsがあるかどうかでカテゴリ判定をしているため注意
-      result += `{ "${toolCalls[i].function.name}": [${
+      result += `"${toolCalls[i].function.name}" => ${
         instructions[i] ? results[i] : `"${results[i]}"`
-      }] }`;
+      }`;
     }
     return result;
   }

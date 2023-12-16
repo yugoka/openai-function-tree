@@ -44,7 +44,7 @@ export class ResponderAgent {
         ...functionTree,
         prompt: functionTree.prompt || responderDefaultPrompt,
       },
-      ...functionTreeAgentOptions,
+      options: functionTreeAgentOptions,
     });
   }
 
@@ -59,8 +59,10 @@ export class ResponderAgent {
     prevMessages: ChatCompletionMessageParam[],
     step: number
   ): Promise<ChatCompletionMessageParam[]> {
-    const { toolCallResults, newMessage, resultText, finishReason } =
+    const { toolCallResults, newMessage, resultText } =
       await this.functionTreeAgent.run(prevMessages);
+
+    console.log("content: ", newMessage.content);
 
     // 結果にツール呼び出しがあるならもう1段階生成する
     if (toolCallResults.length && step < this.options.maxSteps) {
