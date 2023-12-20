@@ -20,6 +20,7 @@ import {
   ChatCompletionToolMessageParam,
 } from "openai/resources";
 import { convertFunctionTreeCategory } from "../utils/convertFunctionTreeCategory";
+import { FunctionTreeTool } from "../types/functionTreeTool";
 
 type AgentOptions = {
   apiKey?: string;
@@ -110,6 +111,7 @@ export class FunctionTreeAgent {
           instruction,
           content: newMessage.content,
           toolCalls: toolCalls?.map((toolCall) => toolCall.function.name),
+          model: modelName,
         });
       }
 
@@ -185,7 +187,8 @@ export class FunctionTreeAgent {
               content: result.resultText,
             };
           } else if (functionTreeNode?.type === "tool") {
-            const result = (await functionTreeNode?.function(toolArgs)) || "";
+            const result =
+              (await this.executeTool(functionTreeNode, toolArgs)) || "";
             return {
               role: "tool",
               tool_call_id: toolCall.id,
@@ -247,5 +250,32 @@ export class FunctionTreeAgent {
       }`;
     }
     return result;
+  }
+
+  async executeTool(
+    functionTreeTool: FunctionTreeTool,
+    args: any
+  ): Promise<string> {
+    if (functionTreeTool.function) {
+      const result = await functionTreeTool.function(args);
+      return result;
+    } else if (functionTreeTool.api) {
+      const queryParams = new URLSearchParams(args.parameters).toString();
+      const apiUrl = `${functionTreeTool.api.url}?${queryParams}`;
+      console.log(apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: functionTreeTool.api.method,
+      });
+
+      if (!response.ok) {
+        return `API responded with status ${response.status}`;
+      }
+
+      const result = await response.json();
+      return JSON.stringify(result);
+    } else {
+      return `Error: Neither function nor api is defined in FunctionTreeTool. name:${functionTreeTool.tool.function.name}`;
+    }
   }
 }

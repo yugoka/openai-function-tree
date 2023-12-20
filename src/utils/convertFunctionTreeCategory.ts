@@ -46,6 +46,7 @@ export const convertFunctionTreeCategory = (
       addToolsToFunctionTreeNode(child)
     ),
     prompt: functionTreeCategory.prompt,
+    modelName: functionTreeCategory.modelName,
   };
   return result;
 };
