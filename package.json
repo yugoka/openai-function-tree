@@ -1,12 +1,17 @@
 {
   "name": "openai-function-tree",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Easily categorizing OpenAI tools & function calling to save token consumption.",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "files": [
     "lib"
   ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "publish": "npm publish --access=public"
+  },
   "repository": "https://github.com/yugoka/openai-function-tree",
   "author": "Yugo Oka",
   "license": "MIT",

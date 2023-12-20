@@ -1,5 +1,6 @@
 import { FunctionTreeCategory } from "../types/functionTreeCategory";
 import { ChatCompletionMessageParam, ChatCompletionMessageToolCall, ChatCompletionToolMessageParam } from "openai/resources";
+import { FunctionTreeTool } from "../types/functionTreeTool";
 type AgentOptions = {
     apiKey?: string;
     functionTree: FunctionTreeCategory;
@@ -27,5 +28,6 @@ export declare class FunctionTreeAgent {
     private callTools;
     private getMessagesForAgent;
     getToolCallResultMessage(toolCalls: ChatCompletionMessageToolCall[], results: string[]): string;
+    executeTool(functionTreeTool: FunctionTreeTool, args: any): Promise<string>;
 }
 export {};
