@@ -262,10 +262,14 @@ export class FunctionTreeAgent {
     } else if (functionTreeTool.api) {
       const queryParams = new URLSearchParams(args.parameters).toString();
       const apiUrl = `${functionTreeTool.api.url}?${queryParams}`;
-      console.log(apiUrl);
+
+      if (this.verbose) {
+        console.log("fetch: ", apiUrl);
+      }
 
       const response = await fetch(apiUrl, {
         method: functionTreeTool.api.method,
+        body: args.requestBody || undefined,
       });
 
       if (!response.ok) {
